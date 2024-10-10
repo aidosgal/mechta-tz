@@ -6,11 +6,21 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 )
 
 type Data struct {
     A   int `json:"a"`    
     B   int `json:"b"` 
+}
+
+func calculateSum(data []Data, start, end int, wg *sync.WaitGroup, resultChan chan int) {
+	defer wg.Done()
+	sum := 0
+	for i := start; i < end; i++ {
+		sum += data[i].A + data[i].B
+	}
+	resultChan <- sum
 }
 
 func main() {
@@ -34,5 +44,32 @@ func main() {
         log.Fatalf("Ошибка при парсинге json файла: %v\n", err)
     }
 
-    fmt.Printf("Чило go routine: %d\n", numGoroutine)
+    dataLen := len(data)
+    resultChan := make(chan int, numGoroutine)
+
+    var wg sync.WaitGroup
+
+    chunkSize := (dataLen + numGoroutine - 1) / numGoroutine
+
+    for i := 0; i < numGoroutine; i++ {
+		start := i * chunkSize
+		end := start + chunkSize
+		if end > dataLen {
+			end = dataLen
+		}
+		wg.Add(1)
+		go calculateSum(data, start, end, &wg, resultChan)
+	}
+
+    go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+    totalSum := 0
+	for sum := range resultChan {
+		totalSum += sum
+	}
+
+    fmt.Printf("Total sum: %d\n", totalSum)
 }

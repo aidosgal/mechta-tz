@@ -3,5 +3,5 @@
 - Пример использования:
 
 ```
-go cmd/main.go test.json 2 
+go run cmd/main.go test.json 2 
 ```
